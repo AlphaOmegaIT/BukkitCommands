@@ -24,7 +24,12 @@
 
 package me.blvckbytes.bukkitcommands;
 
-import me.blvckbytes.bukkitcommands.error.*;
+import me.blvckbytes.bukkitevaluable.EnumInfo;
+import me.blvckbytes.bukkitevaluable.error.CommandError;
+import me.blvckbytes.bukkitevaluable.error.EErrorType;
+import me.blvckbytes.bukkitevaluable.error.ErrorContext;
+import me.blvckbytes.bukkitevaluable.section.ACommandSection;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -47,19 +52,14 @@ public abstract class BukkitCommand extends Command {
     enumConstantsCache = new HashMap<>();
   }
 
-  protected final ICommandConfigProvider configProvider;
+  protected final ACommandSection commandSection;
   protected final Logger logger;
 
-  protected BukkitCommand(ICommandConfigProvider configProvider, Logger logger) {
-    super(
-      configProvider.getName(),
-      configProvider.getDescription(),
-      configProvider.getUsage(),
-      configProvider.getAliases()
-    );
-
-    this.configProvider = configProvider;
-    this.logger = logger;
+  protected BukkitCommand(ACommandSection commandSection) {
+    super(commandSection.getName(), commandSection.getDescription(), commandSection.getUsage(), commandSection.getAliases());
+    
+    this.commandSection = commandSection;
+    this.logger = Bukkit.getServer().getLogger();
   }
 
   //=========================================================================//
@@ -69,6 +69,8 @@ public abstract class BukkitCommand extends Command {
   protected abstract void onInvocation(CommandSender sender, String alias, String[] args);
 
   protected abstract List<String> onTabComplete(CommandSender sender, String alias, String[] args);
+
+
 
   //=========================================================================//
   //                             Bukkit Handlers                             //
@@ -118,6 +120,10 @@ public abstract class BukkitCommand extends Command {
 
   protected Player playerParameterOrElse(String[] args, int argumentIndex, Player fallback) {
     return invokeIfArgPresentOrElse(() -> playerParameter(args, argumentIndex), fallback);
+  }
+
+  protected String stringParameter(String[] args, int argumentIndex) {
+    return this.resolveArgument(args, argumentIndex);
   }
 
   protected OfflinePlayer offlinePlayerParameter(String[] args, int argumentIndex, boolean hasToHavePlayed) {
@@ -226,7 +232,7 @@ public abstract class BukkitCommand extends Command {
     } catch (Exception exception) {
       this.logger.log(Level.SEVERE, exception, () -> "An error occurred while executing a command");
       ErrorContext context = new ErrorContext(sender, alias, args, null);
-      sender.sendMessage(configProvider.getInternalErrorMessage(context));
+      sender.sendMessage(commandSection.getInternalErrorMessage(context));
       return returnValueOnError;
     }
   }
@@ -234,42 +240,23 @@ public abstract class BukkitCommand extends Command {
   private void handleError(CommandError error, CommandSender sender, String alias, String[] args) {
     ErrorContext context = new ErrorContext(sender, alias, args, error.argumentIndex);
 
-    String message;
-    switch (error.errorType) {
-      case MALFORMED_DOUBLE:
-        message = configProvider.getMalformedDoubleMessage(context);
-        break;
-      case MALFORMED_FLOAT:
-        message = configProvider.getMalformedFloatMessage(context);
-        break;
-      case MALFORMED_LONG:
-        message = configProvider.getMalformedLongMessage(context);
-        break;
-      case MALFORMED_INTEGER:
-        message = configProvider.getMalformedIntegerMessage(context);
-        break;
-      case MALFORMED_UUID:
-        message = configProvider.getMalformedUuidMessage(context);
-        break;
-      case MALFORMED_ENUM:
-        message = configProvider.getMalformedEnumMessage(context, (EnumInfo) error.parameter);
-        break;
-      case MISSING_ARGUMENT:
-        message = configProvider.getMissingArgumentMessage(context);
-        break;
-      case NOT_A_PLAYER:
-        message = configProvider.getNotAPlayerMessage(context);
-        break;
-      case PLAYER_UNKNOWN:
-        message = configProvider.getPlayerUnknownMessage(context);
-        break;
-      case PLAYER_NOT_ONLINE:
-        message = configProvider.getPlayerNotOnlineMessage(context);
-        break;
-      default:
-        throw new IllegalStateException("Encountered unimplemented error type: " + error.errorType);
-    }
+    String message = switch (error.errorType) {
+        case MALFORMED_DOUBLE -> commandSection.getMalformedDoubleMessage(context);
+        case MALFORMED_FLOAT -> commandSection.getMalformedFloatMessage(context);
+        case MALFORMED_LONG -> commandSection.getMalformedLongMessage(context);
+        case MALFORMED_INTEGER -> commandSection.getMalformedIntegerMessage(context);
+        case MALFORMED_UUID -> commandSection.getMalformedUuidMessage(context);
+        case MALFORMED_ENUM -> commandSection.getMalformedEnumMessage(context, (EnumInfo) error.parameter);
+        case MISSING_ARGUMENT -> commandSection.getMissingArgumentMessage(context);
+        case NOT_A_PLAYER -> commandSection.getNotAPlayerMessage(context);
+        case NOT_A_CONSOLE -> commandSection.getNotAConsoleMessage(context);
+        case PLAYER_UNKNOWN -> commandSection.getPlayerUnknownMessage(context);
+        case PLAYER_NOT_ONLINE -> commandSection.getPlayerNotOnlineMessage(context);
+    };
 
-    sender.sendMessage(message);
+    if (message.contains("§"))
+      sender.sendMessage(message);
+    else
+      sender.sendMessage(MiniMessage.miniMessage().deserialize(message));
   }
 }

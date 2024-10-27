@@ -22,22 +22,35 @@
  * SOFTWARE.
  */
 
-package me.blvckbytes.bukkitcommands.error;
+package me.blvckbytes.bukkitcommands;
 
+import me.blvckbytes.bukkitevaluable.error.CommandError;
+import me.blvckbytes.bukkitevaluable.error.EErrorType;
+import me.blvckbytes.bukkitevaluable.section.ACommandSection;
 import org.bukkit.command.CommandSender;
-import org.jetbrains.annotations.Nullable;
+import org.bukkit.command.ConsoleCommandSender;
 
-public class ErrorContext {
+public abstract class ServerCommand extends BukkitCommand {
 
-  public final CommandSender sender;
-  public final String alias;
-  public final String[] arguments;
-  public final @Nullable Integer argumentIndex;
+  protected ServerCommand(ACommandSection commandSection) {
+    super(commandSection);
+  }
 
-  public ErrorContext(CommandSender sender, String alias, String[] arguments, @Nullable Integer argumentIndex) {
-    this.sender = sender;
-    this.alias = alias;
-    this.arguments = arguments;
-    this.argumentIndex = argumentIndex;
+  protected abstract void onConsoleInvocation(
+          final ConsoleCommandSender sender,
+          final String alias,
+          final String[] args
+  );
+
+  @Override
+  protected void onInvocation(
+          final CommandSender sender,
+          final String alias,
+          final String[] args
+  ) {
+    if (sender instanceof ConsoleCommandSender consoleCommandSender)
+      this.onConsoleInvocation(consoleCommandSender, alias, args);
+    else
+      throw new CommandError(null, EErrorType.NOT_A_CONSOLE);
   }
 }

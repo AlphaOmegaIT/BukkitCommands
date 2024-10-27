@@ -24,17 +24,16 @@
 
 package me.blvckbytes.bukkitcommands;
 
-import me.blvckbytes.bukkitcommands.error.CommandError;
-import me.blvckbytes.bukkitcommands.error.EErrorType;
+import me.blvckbytes.bukkitevaluable.error.CommandError;
+import me.blvckbytes.bukkitevaluable.error.EErrorType;
+import me.blvckbytes.bukkitevaluable.section.ACommandSection;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.logging.Logger;
-
 public abstract class PlayerCommand extends BukkitCommand {
 
-  protected PlayerCommand(ICommandConfigProvider configProvider, Logger logger) {
-    super(configProvider, logger);
+  protected PlayerCommand(ACommandSection commandSection) {
+    super(commandSection);
   }
 
   protected abstract void onPlayerInvocation(Player sender, String alias, String[] args);
