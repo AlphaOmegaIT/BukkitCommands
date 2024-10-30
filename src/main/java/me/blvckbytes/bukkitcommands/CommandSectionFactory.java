@@ -8,8 +8,11 @@ import me.blvckbytes.bukkitevaluable.ConfigManager;
 import me.blvckbytes.bukkitevaluable.section.ACommandSection;
 import me.blvckbytes.bukkitevaluable.section.PermissionsSection;
 import me.blvckbytes.gpeee.interpreter.EvaluationEnvironmentBuilder;
+import org.bukkit.event.Event;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.EventListener;
 import java.util.Optional;
 import java.util.logging.Level;
 
@@ -18,6 +21,7 @@ import java.util.logging.Level;
  */
 public class CommandSectionFactory {
 
+    private static final String LISTENER_FOLDER = "listener";
     private static final String COMMANDS_FOLDER = "commands";
     private static final String PERMISSIONS_SECTION = "permissions";
 
@@ -45,8 +49,8 @@ public class CommandSectionFactory {
     public boolean createCommand(Class<? extends BukkitCommand> commandClass, Class<? extends ACommandSection> commandSectionClass, String filePath) {
         try {
             ConfigMapper cfg = new ConfigManager(this.loadedPlugin, COMMANDS_FOLDER).loadConfig(filePath);
-            ACommandSection mapSection = cfg.mapSection("commands." + commandSectionClass.getDeclaredConstructor(EvaluationEnvironmentBuilder.class).newInstance(new EvaluationEnvironmentBuilder()).getName(), commandSectionClass);
-            BukkitCommand bukkitCommand = commandClass.getDeclaredConstructor(ACommandSection.class, JavaPlugin.class).newInstance(mapSection, this.loadedPlugin);
+            ACommandSection mapSection = cfg.mapSection("commands." + commandSectionClass.getDeclaredConstructor(EvaluationEnvironmentBuilder.class).newInstance(new EvaluationEnvironmentBuilder()).getDefaultCommandName(), commandSectionClass);
+            BukkitCommand bukkitCommand = commandClass.getDeclaredConstructor(commandSectionClass, this.loadedPlugin.getClass()).newInstance(mapSection, this.loadedPlugin);
             this.commandUpdater.tryRegisterCommand(bukkitCommand);
             this.commandUpdater.trySyncCommands();
         } catch (Exception e) {
@@ -62,13 +66,13 @@ public class CommandSectionFactory {
      * @param filePath The file path to load the configuration from.
      * @return An Optional containing the PermissionsSection if found, empty otherwise.
      */
-    public Optional<PermissionsSection> getPermission(String filePath) {
+    public PermissionsSection getPermission(String filePath) {
         try {
             ConfigMapper cfg = new ConfigManager(this.loadedPlugin, COMMANDS_FOLDER).loadConfig(filePath);
-            return Optional.ofNullable(cfg.mapSection(PERMISSIONS_SECTION, PermissionsSection.class));
+            return cfg.mapSection(PERMISSIONS_SECTION, PermissionsSection.class);
         } catch (Exception e) {
             this.loadedPlugin.getLogger().log(Level.WARNING, "Could not obtain permission for path: " + filePath, e);
-            return Optional.empty();
+            return null;
         }
     }
 }
